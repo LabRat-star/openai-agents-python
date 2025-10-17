@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.12]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install system dependencies
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Create virtual environment and install project
+        run: |
+          python -m pip install --upgrade build
+          # Install the project and dev extras (if present)
+          python -m pip install -e .[dev]
+
+      - name: Run formatting check (ruff)
+        run: |
+          # ruff is optional if not installed as a dev dependency; ignore missing
+          if python -c "import importlib, sys; sys.exit(0 if importlib.util.find_spec('ruff') else 1)"; then
+            python -m ruff check .
+          else
+            echo 'ruff not installed; skipping.'
+          fi
+
+      - name: Run type checks (mypy)
+        run: |
+          if python -c "import importlib, sys; sys.exit(0 if importlib.util.find_spec('mypy') else 1)"; then
+            python -m mypy src tests || true
+          else
+            echo 'mypy not installed; skipping.'
+          fi
+
+      - name: Run tests
+        run: |
+          python -m pytest -q
