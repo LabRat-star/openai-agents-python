@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -106,8 +106,13 @@ def _make_session(session_id: str) -> SQLiteSession:
     return SQLiteSession(session_id=session_id, db_path=str(DATABASE_PATH))
 
 
-def _items_to_messages(items: list[dict[str, Any]]) -> list[ChatMessage]:
-    """Convert OpenAI Responses input items into lightweight chat messages."""
+def _items_to_messages(items: Iterable[Any]) -> list[ChatMessage]:
+    """Convert OpenAI Responses input items into lightweight chat messages.
+
+    The SDK's SQLiteSession.get_items() returns a heterogenous list of items (dicts and
+    typed objects). We accept any iterable and filter for dict-based 'message' items, so
+    callers such as _load_history can pass the raw result directly without casting.
+    """
     messages: list[ChatMessage] = []
     for item in items:
         if not isinstance(item, dict):
